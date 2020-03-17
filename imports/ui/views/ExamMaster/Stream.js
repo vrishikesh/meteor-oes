@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState } from 'react'
 import { withTracker } from 'meteor/react-meteor-data'
 import { Meteor } from 'meteor/meteor'
 
@@ -6,7 +6,6 @@ import Dialog from '@material-ui/core/Dialog'
 import DialogActions from '@material-ui/core/DialogActions'
 import DialogContent from '@material-ui/core/DialogContent'
 // import DialogContentText from '@material-ui/core/DialogContentText'
-import Backdrop from '@material-ui/core/Backdrop'
 import CircularProgress from '@material-ui/core/CircularProgress'
 import DialogTitle from '@material-ui/core/DialogTitle'
 
@@ -23,63 +22,67 @@ import { StreamCollection } from '../../../api/collections/streams'
 
 const Stream = props => {
   const [open, setOpen] = useState(false)
-  const [streams, setStreams] = useState([])
+  const [streamId, setStreamId] = useState(null)
   const [streamName, setStreamName] = useState('')
   const [loading, setLoading] = useState(false)
-  const [draw, setDraw] = useState(0)
-  const [backdropOpen, setBackdropOpen] = useState(false)
   const classes = useStyles()
+  let streams = []
 
-  useEffect(() => {
-    ;(async () => {
-      setBackdropOpen(true)
-      const response = props.streams
-      console.log(response)
-      if (response.length) {
-        let newStreams = Object.entries(response.data).map(([key, record]) => {
-          if (record && record.streamName && record.streamName.length) {
-            return [
-              record.streamName,
-              <Button data-stream-name={record.streamName}>Edit</Button>,
-            ]
-          } else return null
-        })
+  if (props.streams.length) {
+    streams = props.streams.map(({ _id, streamName }) => {
+      return [
+        streamName,
+        <div>
+          <Button onClick={e => handleEdit(_id, streamName)}>Edit</Button>
+          <Button onClick={e => handleRemove(_id)} color="danger">
+            Delete
+          </Button>
+        </div>,
+      ]
+    })
+  }
 
-        newStreams = newStreams.filter(_ => _ !== null)
-        setStreams(newStreams)
-      }
-      setBackdropOpen(false)
-    })()
-  }, [draw])
-
-  const handleSave = async () => {
+  const handleSave = () => {
     setLoading(true)
-    try {
-      Meteor.call('streams.insert', { streamName }, (err, res) => {
-        if (err) {
-          console.log('error: ', err)
-        } else {
-          console.log('response: ', res)
-        }
-      })
-      setOpen(false)
-      setDraw(draw + 1)
-    } catch (error) {
-      console.log(error)
-    } finally {
+    Meteor.call('streams.insert', { streamName }, (error, res) => {
+      if (error) {
+        console.error('error: ', error)
+      } else if (Array.isArray(res)) {
+        console.log('response: ', res)
+        alert('Stream Name should be min 3 and max 32 characters')
+      } else {
+        console.log('response: ', res)
+        handleDialogClose()
+      }
+
       setLoading(false)
-    }
+    })
+  }
+
+  const handleRemove = id => {
+    Meteor.call('streams.remove', id, (error, res) => {
+      if (error) {
+        console.error('error: ', error)
+      } else {
+        console.log('response: ', res)
+      }
+    })
+  }
+
+  const handleEdit = (id, streamName) => {
+    setStreamId(id)
+    setStreamName(streamName)
+    setOpen(true)
+  }
+
+  const handleDialogClose = () => {
+    setStreamName('')
+    setStreamId(null)
+    setOpen(false)
   }
 
   return (
     <GridContainer>
-      <Backdrop
-        className={classes.backdrop}
-        open={backdropOpen}
-        onClick={() => setBackdropOpen(false)}
-      >
-        <CircularProgress color="primary" />
-      </Backdrop>
       <GridItem xs={12} sm={12} md={12}>
         <Card>
           <CardHeader color="primary">
@@ -110,7 +113,7 @@ const Stream = props => {
       </GridItem>
       <Dialog
         open={open}
-        onClose={() => setOpen(false)}
+        onClose={handleDialogClose}
         aria-labelledby="form-dialog-title"
         fullWidth={true}
         maxWidth={'sm'}
@@ -128,11 +131,12 @@ const Stream = props => {
             }}
             inputProps={{
               onInput: e => setStreamName(e.target.value),
+              value: streamName,
             }}
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpen(false)} color="danger">
+          <Button onClick={handleDialogClose} color="danger">
             Cancel
           </Button>
 

@@ -5,6 +5,8 @@ const StreamSchema = new SimpleSchema({
   streamName: {
     type: String,
     max: 32,
+    min: 2,
+    required: true,
   },
 }).newContext()
 

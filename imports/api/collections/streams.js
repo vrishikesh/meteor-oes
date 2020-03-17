@@ -10,13 +10,15 @@ export function publishStreams() {
 
 Meteor.methods({
   'streams.insert': function(data) {
-    console.log(data)
     StreamSchema.validate(data)
     if (StreamSchema.isValid()) {
       return StreamCollection.insert(StreamSchema.clean(data))
     } else {
       return StreamSchema.validationErrors()
     }
+  },
+  'streams.remove': function(id) {
+    return StreamCollection.remove(id)
   },
 })
 
